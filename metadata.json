@@ -1,0 +1,6 @@
+{
+  "name": "Pemantau Data Dukung Kinerja Ditsar",
+  "description": "Dasbor otomatisasi pemantauan kelengkapan data dukung kinerja subdirektorat, pemeriksaan kepatuhan tenggat, dan penyusunan draf pengingat untuk Direktorat Sarana Perkeretaapian.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
