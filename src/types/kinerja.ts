@@ -19,14 +19,14 @@ export interface RequiredDocument {
   namaDokumen: string;
   formatWajib: string;
   perluTandaTangan: boolean;
-  tenggat: string; // YYYY-MM-DD
+  tenggat: string;
 }
 
 export interface SubmittedDocument {
   id: string;
   subdirektorat: string;
   namaDokumen: string;
-  tanggalMasuk: string; // YYYY-MM-DD or raw text
+  tanggalMasuk: string;
   periode: string;
   format: string;
   statusTandaTangan: SignatureStatus;
@@ -112,3 +112,78 @@ export interface MonitoringReport {
   escalations: EscalationItem[];
   formattedMarkdownReport: string;
 }
+
+export type ActivityCategory =
+  | 'Daftar Wajib'
+  | 'Data Masuk'
+  | 'Parameter'
+  | 'Pengingat'
+  | 'Verifikasi'
+  | 'Target'
+  | 'Capaian Kinerja'
+  | 'Rencana Aksi'
+  | 'Sistem';
+
+export interface ActivityLogEntry {
+  id: string;
+  timestampIso: string;
+  kategori: ActivityCategory;
+  ringkasan: string;
+  rataRataKepatuhan?: number;
+  totalDokumenSesuai?: number;
+  totalDokumenWajib?: number;
+  subditKepatuhan?: Record<string, number>;
+}
+
+export interface ManualVerificationEntry {
+  verified: boolean;
+  verifiedAtIso?: string;
+}
+
+export interface PreviousMonthBaseline {
+  periodeLabel: string;
+  kepatuhanPersen: number | null;
+}
+
+export type CapaianCalcMode = 'tetap' | 'akumulasi' | 'nilai';
+
+export interface CapaianKinerjaItem {
+  id: string;
+  subdirektorat: string;
+  nomorSasaranKinerja?: string;
+  sasaranKinerja?: string;
+  kodeIku: string;
+  indikatorKinerja: string;
+  satuan: string;
+  target: number;
+  realisasi: number;
+  periode: string;
+  tahun?: string;
+  jenisPerhitungan?: CapaianCalcMode;
+  realisasiBulanan?: Array<number | null>;
+  realisasiOutput?: string;
+  satuanOutput?: string;
+  buktiDukung: string;
+  kendalaDanTindakLanjut: string;
+}
+
+export interface RencanaAksiBulanDetail {
+  target: number | null;
+  realisasi: number | null;
+  evaluasi: string;
+  rencanaTindakLanjut: string;
+}
+
+export interface RencanaAksiItem {
+  id: string;
+  capaianItemId: string;
+  subdirektorat: string;
+  tahun: string;
+  nomorSasaranKinerja?: string;
+  sasaranKinerja: string;
+  kodeIku: string;
+  indikatorKinerja: string;
+  satuan: string;
+  bulanan: RencanaAksiBulanDetail[];
+}
+

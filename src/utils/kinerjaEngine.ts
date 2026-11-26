@@ -80,7 +80,6 @@ export function parseFlexibleDate(raw: string): string {
   if (!cleaned) return '';
   if (isValidIsoDate(cleaned)) return cleaned;
 
-  // DD/MM/YYYY or DD-MM-YYYY
   const dmy = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (dmy) {
     const day = dmy[1].padStart(2, '0');
@@ -90,7 +89,6 @@ export function parseFlexibleDate(raw: string): string {
     return isValidIsoDate(candidate) ? candidate : '';
   }
 
-  // DD Month YYYY (Indonesian)
   const indMatch = cleaned.toLowerCase().match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/);
   if (indMatch) {
     const day = indMatch[1].padStart(2, '0');
@@ -113,6 +111,19 @@ export function formatTanggalIndonesia(isoDate: string): string {
   return `${d} ${BULAN_ID[m - 1]} ${y}`;
 }
 
+export function formatTimestampIndonesia(isoTimestamp: string): string {
+  if (!isoTimestamp) return 'Belum ada perubahan tercatat';
+  const dt = new Date(isoTimestamp);
+  if (Number.isNaN(dt.getTime())) return isoTimestamp;
+  const day = dt.getDate();
+  const month = BULAN_ID[dt.getMonth()].slice(0, 3);
+  const year = dt.getFullYear();
+  const hh = String(dt.getHours()).padStart(2, '0');
+  const mm = String(dt.getMinutes()).padStart(2, '0');
+  const ss = String(dt.getSeconds()).padStart(2, '0');
+  return `${day} ${month} ${year}, ${hh}:${mm}:${ss}`;
+}
+
 export function diffDaysIso(targetIso: string, todayIso: string): number | null {
   if (!isValidIsoDate(targetIso) || !isValidIsoDate(todayIso)) return null;
   const [ty, tm, td] = targetIso.split('-').map(Number);
@@ -129,7 +140,6 @@ export function formatSisaHari(sisaHari: number | null): string {
   return `Terlewat ${Math.abs(sisaHari)} hari`;
 }
 
-// Mandatory PII, sensitive financial/contract, and classified doc scanner
 const SENSITIVE_PATTERNS: Array<{
   regex: RegExp;
   kategori: SecurityAlert['kategori'];
@@ -329,7 +339,6 @@ function docMatchScore(requiredName: string, submittedName: string): 'exact' | '
   if (!reqNorm || !subNorm) return 'none';
   if (reqNorm === subNorm) return 'exact';
 
-  // Compare core tokens to spot partial / ambiguous matches
   const reqTokens = reqNorm.split(' ').filter((t) => t.length > 2);
   const subTokens = subNorm.split(' ').filter((t) => t.length > 2);
   if (reqTokens.length === 0 || subTokens.length === 0) return 'none';
@@ -470,7 +479,6 @@ export function evaluateKinerjaData(params: {
 
   const tanggalFormatted = formatTanggalIndonesia(tanggalHariIni);
 
-  // If missing required inputs or blocked by security, return early with clear state
   if (!missingInput.isComplete || blockedBySecurity) {
     const escalations: EscalationItem[] = securityAlerts.map((alert) => ({
       id: generateId('esc'),
@@ -511,7 +519,6 @@ export function evaluateKinerjaData(params: {
     };
   }
 
-  // Group required docs by Subdirektorat
   const subditNamesOrder: string[] = [];
   const reqBySubdit = new Map<string, RequiredDocument[]>();
 
@@ -524,7 +531,6 @@ export function evaluateKinerjaData(params: {
     reqBySubdit.get(name)!.push(req);
   }
 
-  // Also check submitted docs whose subdirektorat doesn't appear in requiredDocs
   const subBySubdit = new Map<string, SubmittedDocument[]>();
   const orphanSubmittedDocs: SubmittedDocument[] = [];
 
@@ -549,7 +555,6 @@ export function evaluateKinerjaData(params: {
     reminderCountMap.set(normalizeText(r.subdirektorat), r.pengingatTerkirim);
   }
 
-  // Handle orphan submitted docs (Subdirektorat tidak ada di daftar wajib -> kondisi 4 / kondisi 7)
   for (const orphan of orphanSubmittedDocs) {
     const catLower = orphan.catatan.toLowerCase();
     const isMisrouted =
@@ -576,7 +581,6 @@ export function evaluateKinerjaData(params: {
     const auditItems: DocumentAuditItem[] = [];
     const missingOrIncompleteDescriptions: string[] = [];
 
-    // Check unreadability / anomalies on submitted rows for this subdit
     for (const sub of subList) {
       if (!sub.namaDokumen.trim() || sub.namaDokumen.includes('???')) {
         escalations.push({
@@ -639,7 +643,6 @@ export function evaluateKinerjaData(params: {
       }
     }
 
-    // Evaluate each required document
     for (const req of reqList) {
       const candidates = subList
         .map((sub) => ({
@@ -648,12 +651,10 @@ export function evaluateKinerjaData(params: {
         }))
         .filter((x) => x.score !== 'none');
 
-      // Prefer exact match, else partial
       const exactMatches = candidates.filter((c) => c.score === 'exact');
       const selectedMatches = exactMatches.length > 0 ? exactMatches : candidates;
 
       if (selectedMatches.length > 1) {
-        // Check if contradictory submissions exist
         const ttdSet = new Set(selectedMatches.map((m) => m.sub.statusTandaTangan));
         const periodeSet = new Set(selectedMatches.map((m) => normalizeText(m.sub.periode)));
         if (ttdSet.size > 1 || periodeSet.size > 1) {
@@ -814,7 +815,6 @@ export function evaluateKinerjaData(params: {
       });
     }
 
-    // Extra submitted docs for this subdit not matched to any required doc -> Condition #4
     const extraSubmittedDocs = subList.filter((s) => !matchedSubIds.has(s.id));
     for (const extra of extraSubmittedDocs) {
       escalations.push({
@@ -826,7 +826,6 @@ export function evaluateKinerjaData(params: {
       });
     }
 
-    // Determine Subdirektorat overall status
     let status: SubdirektoratStatus = 'Sudah lengkap menurut daftar';
     const anyMatched = auditItems.some((a) => a.checks.ada);
     const allSesuai = auditItems.every((a) => a.outcome === 'Sesuai');
@@ -837,7 +836,6 @@ export function evaluateKinerjaData(params: {
       status = 'Kurang lengkap';
     }
 
-    // Deadline calculation (take earliest valid deadline among incomplete/required docs)
     const relevantDocsForDeadline =
       auditItems.some((a) => a.outcome !== 'Sesuai')
         ? auditItems.filter((a) => a.outcome !== 'Sesuai').map((a) => a.requiredDoc)
@@ -854,7 +852,6 @@ export function evaluateKinerjaData(params: {
       : null;
     const sisaHariLabel = formatSisaHari(sisaHariAngka);
 
-    // Condition #1 & #6 checks
     if (status !== 'Sudah lengkap menurut daftar') {
       if (sisaHariAngka !== null && sisaHariAngka < 0 && pengingatTerkirim >= 1) {
         escalations.push({
@@ -876,7 +873,6 @@ export function evaluateKinerjaData(params: {
       }
     }
 
-    // Build concise status table note citing documents
     const sesuaiCount = auditItems.filter((a) => a.outcome === 'Sesuai').length;
     let catatan = '';
     if (status === 'Sudah lengkap menurut daftar') {
@@ -920,7 +916,6 @@ export function evaluateKinerjaData(params: {
     });
   }
 
-  // Deduplicate identical escalations
   const dedupedEscalations: EscalationItem[] = [];
   const escKeys = new Set<string>();
   for (const esc of escalations) {
@@ -1017,9 +1012,7 @@ function buildMarkdownReport(params: {
       lines.push('');
     }
   }
-  if (drafts.length > 0) {
-    // remove trailing blank if needed, keep clean
-  } else {
+  if (drafts.length === 0) {
     lines.push('');
   }
 
